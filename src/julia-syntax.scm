@@ -813,7 +813,6 @@
   (receive
    (params bounds) (sparam-name-bounds params '() '())
    `(block
-     (const ,name)
      (scope-block
       (block
        ,@(map (lambda (v) `(local ,v)) params)
@@ -842,6 +841,16 @@
       ((pattern-lambda (|<:| (curly (-- name (-s)) . params) super)
                        (values name params super)) ex)
       (error "invalid type signature")))
+
+(define (analyze-type-sig-extrn ex)
+  (or ((pattern-lambda (|<:| (curly (-- name sym-dot?) . params) super)
+                       (values name params super)) ex)
+      ((pattern-lambda (|<:| (-- name sym-dot?) super)
+                       (values name '() super)) ex)
+      ((pattern-lambda (-- name sym-dot?) (values name '() 'Any)) ex)
+      ((pattern-lambda (curly (-- name sym-dot?) . params)
+                       (values name params 'Any)) ex)
+      (error "invalid extern syntax")))
 
 ;; insert calls to convert() in ccall, and pull out expressions that might
 ;; need to be rooted before conversion.
@@ -1673,7 +1682,7 @@
    (lambda (e)
      (let ((sig (cadr e)))
        (expand-forms
-        (receive (name params super) (analyze-type-sig sig)
+        (receive (name params super) (analyze-type-sig-extrn sig)
                  (extern-type-def-expr name params super)))))
 
    'bitstype
