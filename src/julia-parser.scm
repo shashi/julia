@@ -102,7 +102,7 @@
 
 (define reserved-words '(begin while if for try return break continue
                          stagedfunction function macro quote let local global const
-                         abstract typealias type bitstype immutable ccall do
+                         abstract typealias type extern bitstype immutable ccall do
                          module baremodule using import export importall))
 
 (define reserved-word? (Set reserved-words))
@@ -1173,8 +1173,8 @@
                 (expect-end s word)
                 (add-filename-to-block! body loc)
                 (list word def body)))))
-       ((abstract)
-        (list 'abstract (parse-subtype-spec s)))
+       ((abstract extern)
+        (list word (parse-subtype-spec s)))
        ((type immutable)
         (let ((immu? (eq? word 'immutable)))
           (if (reserved-word? (peek-token s))

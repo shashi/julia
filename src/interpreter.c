@@ -310,6 +310,31 @@ static jl_value_t *eval(jl_value_t *e, jl_value_t **locals, jl_lambda_info_t *la
         JL_GC_POP();
         return (jl_value_t*)jl_nothing;
     }
+    else if (ex->head == externtype_sym) {
+        jl_value_t *name = args[0];
+        jl_value_t *para = eval(args[1], locals, lam);
+        jl_value_t *super = NULL;
+        jl_value_t *temp = NULL;
+        jl_datatype_t *dt = NULL;
+        JL_GC_PUSH4(&para, &super, &temp, &dt);
+        assert(jl_is_svec(para));
+        assert(jl_is_symbol(name));
+        dt = jl_new_abstracttype(name, jl_any_type, (jl_svec_t*)para);
+        jl_binding_t *b = jl_get_binding_wr(jl_current_module, (jl_sym_t*)name);
+        temp = b->value;
+        check_can_assign_type(b);
+        b->value = (jl_value_t*)dt;
+        jl_gc_wb_binding(b, dt);
+        super = eval(args[2], locals, lam);
+        jl_set_datatype_super(dt, super);
+        jl_reinstantiate_inner_types(dt);
+        b->value = temp;
+        if (temp==NULL || !equiv_type(dt, (jl_datatype_t*)temp)) {
+            jl_checked_assignment(b, (jl_value_t*)dt);
+        }
+        JL_GC_POP();
+        return (jl_value_t*)jl_nothing;
+    }
     else if (ex->head == bitstype_sym) {
         jl_value_t *name = args[0];
         jl_value_t *super = NULL, *para = NULL, *vnb = NULL, *temp = NULL;

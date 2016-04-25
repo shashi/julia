@@ -809,6 +809,17 @@
        ,@(map make-assignment params (symbols->typevars params bounds #f))
        (abstract_type ,name (call (top svec) ,@params) ,super))))))
 
+(define (extern-type-def-expr name params super)
+  (receive
+   (params bounds) (sparam-name-bounds params '() '())
+   `(block
+     (const ,name)
+     (scope-block
+      (block
+       ,@(map (lambda (v) `(local ,v)) params)
+       ,@(map make-assignment params (symbols->typevars params bounds #f))
+       (extern_type ,name (call (top svec) ,@params) ,super))))))
+
 (define (bits-def-expr n name params super)
   (receive
    (params bounds) (sparam-name-bounds params '() '())
@@ -1657,6 +1668,13 @@
        (expand-forms
         (receive (name params super) (analyze-type-sig sig)
                  (abstract-type-def-expr name params super)))))
+
+   'extern
+   (lambda (e)
+     (let ((sig (cadr e)))
+       (expand-forms
+        (receive (name params super) (analyze-type-sig sig)
+                 (extern-type-def-expr name params super)))))
 
    'bitstype
    (lambda (e)
@@ -3144,7 +3162,7 @@ f(x) = yt(x)
                    (value e)
                    (else  (emit e))))
             ;; top level expressions returning values
-            ((abstract_type bits_type composite_type thunk toplevel module)
+            ((abstract_type extern_type bits_type composite_type thunk toplevel module)
              (if tail (emit-return e) (emit e)))
             ;; other top level expressions
             ((import importall using export)
