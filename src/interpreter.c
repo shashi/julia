@@ -311,21 +311,26 @@ static jl_value_t *eval(jl_value_t *e, jl_value_t **locals, jl_lambda_info_t *la
         return (jl_value_t*)jl_nothing;
     }
     else if (ex->head == externtype_sym) {
-        jl_value_t *name = args[0];
-        jl_value_t *para = eval(args[1], locals, lam);
+        jl_value_t *mname = args[0];
+        jl_value_t *name = eval(args[1], locals, lam);
+        assert(jl_is_symbol(mname));
+        assert(jl_is_symbol(name));
+        jl_value_t *para = eval(args[2], locals, lam);
         jl_value_t *super = NULL;
         jl_value_t *temp = NULL;
         jl_datatype_t *dt = NULL;
-        JL_GC_PUSH4(&para, &super, &temp, &dt);
+
+        jl_module_t* m = jl_get_extern_module((jl_sym_t*)mname);
+        JL_GC_PUSH5(&para, &m, &super, &temp, &dt);
         assert(jl_is_svec(para));
-        assert(jl_is_symbol(name));
-        dt = jl_new_abstracttype(name, jl_any_type, (jl_svec_t*)para);
-        jl_binding_t *b = jl_get_binding_wr(jl_current_module, (jl_sym_t*)name);
+        //assert(jl_is_symbol(name));
+        dt = jl_new_externtype(m, name, jl_any_type, (jl_svec_t*)para);
+        jl_binding_t *b = jl_get_binding_wr(m, (jl_sym_t*)name);
         temp = b->value;
         check_can_assign_type(b);
         b->value = (jl_value_t*)dt;
         jl_gc_wb_binding(b, dt);
-        super = eval(args[2], locals, lam);
+        super = eval(args[3], locals, lam);
         jl_set_datatype_super(dt, super);
         jl_reinstantiate_inner_types(dt);
         b->value = temp;

@@ -280,6 +280,7 @@ typedef struct _jl_datatype_t {
     uint8_t abstract;
     uint8_t mutabl;
     uint8_t pointerfree;
+    uint8_t extrn;
     int32_t ninitialized;
     int32_t depth;
     // hidden fields:
@@ -326,9 +327,11 @@ typedef struct {
 typedef struct _jl_module_t {
     JL_DATA_TYPE
     jl_sym_t *name;
+    uint8_t isplaceholder;
     struct _jl_module_t *parent;
     htable_t bindings;
     arraylist_t usings;  // modules with all bindings potentially imported
+    arraylist_t externs; // modules which do extern on bindings in this module
     uint8_t istopmod;
     uint8_t std_imports;  // only for temporarily deprecating `importall Base.Operators`
     uint64_t uuid;
@@ -932,7 +935,7 @@ JL_DLLEXPORT jl_tupletype_t *jl_apply_tuple_type(jl_svec_t *params);
 JL_DLLEXPORT jl_tupletype_t *jl_apply_tuple_type_v(jl_value_t **p, size_t np);
 JL_DLLEXPORT jl_datatype_t *jl_new_uninitialized_datatype(size_t nfields,
                                                           int8_t fielddesc_type);
-JL_DLLEXPORT jl_datatype_t *jl_new_datatype(jl_sym_t *name, jl_datatype_t *super,
+JL_DLLEXPORT jl_datatype_t *jl_new_datatype(jl_value_t *name, jl_datatype_t *super,
                                             jl_svec_t *parameters,
                                             jl_svec_t *fnames, jl_svec_t *ftypes,
                                             int abstract, int mutabl,
@@ -940,6 +943,11 @@ JL_DLLEXPORT jl_datatype_t *jl_new_datatype(jl_sym_t *name, jl_datatype_t *super
 JL_DLLEXPORT jl_datatype_t *jl_new_bitstype(jl_value_t *name,
                                             jl_datatype_t *super,
                                             jl_svec_t *parameters, size_t nbits);
+
+jl_datatype_t *jl_new_externtype(jl_module_t *m,
+                                 jl_value_t *name,
+                                 jl_datatype_t *super,
+                                 jl_svec_t *parameters);
 
 // constructors
 JL_DLLEXPORT jl_value_t *jl_new_bits(jl_value_t *bt, void *data);
@@ -1077,6 +1085,8 @@ extern JL_DLLEXPORT jl_module_t *jl_base_module;
 extern JL_DLLEXPORT jl_module_t *jl_top_module;
 #define jl_current_module (jl_get_ptls_states()->current_module)
 JL_DLLEXPORT jl_module_t *jl_new_module(jl_sym_t *name);
+JL_DLLEXPORT jl_module_t *jl_new_module_using(jl_sym_t *name, uint8_t dousing);
+jl_module_t *jl_get_extern_module(jl_sym_t *name);
 // get binding for reading
 JL_DLLEXPORT jl_binding_t *jl_get_binding(jl_module_t *m, jl_sym_t *var);
 JL_DLLEXPORT jl_binding_t *jl_get_binding_or_error(jl_module_t *m, jl_sym_t *var);

@@ -18,6 +18,28 @@ jl_module_t *jl_top_module=NULL;
 
 JL_DLLEXPORT jl_module_t *jl_new_module(jl_sym_t *name)
 {
+    return jl_new_module_using(name, 1);
+}
+
+jl_module_t *jl_get_extern_module(jl_sym_t *name)
+{
+    jl_module_t *m;
+
+    m = (jl_module_t*)jl_get_global(jl_main_module, (jl_sym_t*)name);
+
+    if (m == NULL) {
+        m = jl_new_module_using((jl_sym_t*)name, 1);
+    }
+    if(!jl_is_module(m)) {
+        jl_errorf("could not make module");
+    } else {
+        printf("got module");
+    }
+    return m;
+}
+
+JL_DLLEXPORT jl_module_t *jl_new_module_using(jl_sym_t *name, uint8_t dousing)
+{
     jl_module_t *m = (jl_module_t*)jl_gc_allocobj(sizeof(jl_module_t));
     jl_set_typeof(m, jl_module_type);
     JL_GC_PUSH1(&m);
@@ -25,12 +47,13 @@ JL_DLLEXPORT jl_module_t *jl_new_module(jl_sym_t *name)
     m->name = name;
     m->parent = NULL;
     m->istopmod = 0;
+    m->isplaceholder = !dousing;
     m->std_imports = 0;
     m->uuid = uv_now(uv_default_loop());
     m->counter = 0;
     htable_new(&m->bindings, 0);
     arraylist_new(&m->usings, 0);
-    if (jl_core_module) {
+    if (dousing && jl_core_module) {
         jl_module_using(m, jl_core_module);
     }
     // export own name, so "using Foo" makes "Foo" itself visible

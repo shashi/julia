@@ -809,7 +809,7 @@
        ,@(map make-assignment params (symbols->typevars params bounds #f))
        (abstract_type ,name (call (top svec) ,@params) ,super))))))
 
-(define (extern-type-def-expr name params super)
+(define (extern-type-def-expr mod name params super)
   (receive
    (params bounds) (sparam-name-bounds params '() '())
    `(block
@@ -817,7 +817,7 @@
       (block
        ,@(map (lambda (v) `(local ,v)) params)
        ,@(map make-assignment params (symbols->typevars params bounds #f))
-       (extern_type ,name (call (top svec) ,@params) ,super))))))
+       (extern_type ,mod ,name (call (top svec) ,@params) ,super))))))
 
 (define (bits-def-expr n name params super)
   (receive
@@ -843,13 +843,13 @@
       (error "invalid type signature")))
 
 (define (analyze-type-sig-extrn ex)
-  (or ((pattern-lambda (|<:| (curly (-- name sym-dot?) . params) super)
-                       (values name params super)) ex)
-      ((pattern-lambda (|<:| (-- name sym-dot?) super)
-                       (values name '() super)) ex)
-      ((pattern-lambda (-- name sym-dot?) (values name '() 'Any)) ex)
-      ((pattern-lambda (curly (-- name sym-dot?) . params)
-                       (values name params 'Any)) ex)
+  (or ((pattern-lambda (|<:| (curly (|.| mod name) . params) super)
+                       (values mod name params super)) ex)
+      ((pattern-lambda (|<:| (|.| mod name) super)
+                       (values mod name '() super)) ex)
+      ((pattern-lambda (curly (|.| mod name) . params)
+                       (values mod name params 'Any)) ex)
+      ((pattern-lambda (|.| mod name) (values mod name '() 'Any)) ex)
       (error "invalid extern syntax")))
 
 ;; insert calls to convert() in ccall, and pull out expressions that might
@@ -1682,8 +1682,8 @@
    (lambda (e)
      (let ((sig (cadr e)))
        (expand-forms
-        (receive (name params super) (analyze-type-sig-extrn sig)
-                 (extern-type-def-expr name params super)))))
+        (receive (mod name params super) (analyze-type-sig-extrn sig)
+                 (extern-type-def-expr mod name params super)))))
 
    'bitstype
    (lambda (e)

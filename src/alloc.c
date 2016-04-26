@@ -630,6 +630,30 @@ jl_datatype_t *jl_new_abstracttype(jl_value_t *name, jl_datatype_t *super,
     return dt;
 }
 
+jl_datatype_t *jl_new_externtype(jl_module_t *m,
+                                 jl_value_t *name,
+                                 jl_datatype_t *super,
+                                 jl_svec_t *parameters)
+{
+ // jl_binding_t *b = jl_get_binding(m, (jl_sym_t*) name);
+ // if (b != NULL) {
+ //     if (!jl_is_datatype(b->value)) {
+ //         jl_errorf("externed symbol is not a type %s",
+ //                   jl_symbol_name(b->name));
+ //         // TODO: Check to see if the parameters match.
+ //         // otherwise invalid redefinition
+ //     } else {
+ //         return b->value;
+ //     }
+ // }
+    jl_typename_t* tn = jl_new_typename_in((jl_sym_t*)name, m);
+
+    jl_datatype_t *dt = jl_new_datatype(tn, super, parameters, jl_emptysvec, jl_emptysvec, 1, 0, 0);
+    dt->pointerfree = 0;
+    dt->extrn = 1;
+    return dt;
+}
+
 JL_DLLEXPORT jl_datatype_t *jl_new_uninitialized_datatype(size_t nfields, int8_t fielddesc_type)
 {
     // fielddesc_type is specified manually for builtin types
@@ -703,7 +727,7 @@ void jl_compute_field_offsets(jl_datatype_t *st)
 
 extern int jl_boot_file_loaded;
 
-JL_DLLEXPORT jl_datatype_t *jl_new_datatype(jl_sym_t *name, jl_datatype_t *super,
+JL_DLLEXPORT jl_datatype_t *jl_new_datatype(jl_value_t *name, jl_datatype_t *super,
                                             jl_svec_t *parameters,
                                             jl_svec_t *fnames, jl_svec_t *ftypes,
                                             int abstract, int mutabl,
